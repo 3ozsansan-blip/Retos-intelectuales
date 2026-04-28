@@ -1,0 +1,173 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Retos Intelectuales</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;800&display=swap');
+*{box-sizing:border-box}
+body{
+  font-family:'Poppins',sans-serif;
+  margin:0;
+  min-height:100vh;
+  background:linear-gradient(135deg,#667eea,#764ba2);
+  color:#2c2c2c;
+  text-align:center;
+}
+h1{
+  margin:0;
+  padding:16px;
+  font-size:1.6rem;
+  color:#fff;
+  letter-spacing:1px;
+}
+.container{
+  width:95%;
+  max-width:900px;
+  margin:16px auto;
+  background:white;
+  padding:18px;
+  border-radius:18px;
+  box-shadow:0 10px 25px rgba(0,0,0,.2);
+}
+button{
+  width:100%;
+  padding:14px;
+  border:none;
+  border-radius:14px;
+  font-size:1rem;
+  font-weight:600;
+  margin:8px 0;
+  cursor:pointer;
+  transition:transform .1s, box-shadow .1s;
+}
+button:hover{
+  transform:translateY(-2px);
+  box-shadow:0 6px 15px rgba(0,0,0,.25);
+}
+button:disabled{background:#ccc;color:#666;box-shadow:none}
+button.primary{background:linear-gradient(135deg,#43cea2,#185a9d);color:white}
+button.success{background:linear-gradient(135deg,#56ab2f,#a8e063);color:white}
+button.danger{background:linear-gradient(135deg,#ff416c,#ff4b2b);color:white}
+input{
+  width:100%;
+  padding:14px;
+  border-radius:14px;
+  border:2px solid #ddd;
+  font-size:1rem;
+  margin-bottom:10px;
+}
+.hidden{display:none}
+.timer{
+  font-size:2rem;
+  font-weight:800;
+  color:#ff416c;
+}
+.progress{
+  background:#f1f1f1;
+  border-radius:10px;
+  padding:6px;
+  margin-bottom:10px;
+  font-weight:600;
+}
+.options button{
+  background:linear-gradient(135deg,#36d1dc,#5b86e5);
+  color:white;
+}
+.options button:hover{
+  box-shadow:0 0 0 3px rgba(91,134,229,.4);
+}
+.error{color:#ff416c;font-size:.9rem}
+table{width:100%;border-collapse:collapse;margin-top:10px}
+th,td{padding:10px;border-bottom:1px solid #eee}
+th{background:#667eea;color:white}
+.badge{
+  display:inline-block;
+  background:linear-gradient(135deg,#f7971e,#ffd200);
+  color:black;
+  padding:6px 14px;
+  border-radius:20px;
+  font-weight:700;
+}
+</style>
+</head>
+<body>
+<h1>🧠 Retos Intelectuales</h1>
+
+<div class="container" id="ranking">
+<h2 class="badge">🏆 Ranking General</h2>
+<table>
+<thead><tr><th>#</th><th>Nombre</th><th>✅</th><th>❌</th></tr></thead>
+<tbody id="tabla"></tbody>
+</table>
+<button class="success" onclick="mostrarRegistro()">➕ Registrar participante</button>
+<button class="danger" onclick="reiniciarConClave()">🔒 Reiniciar</button>
+</div>
+
+<div class="container hidden" id="registro">
+<h2>✍️ Registro</h2>
+<input id="nombre" placeholder="Nombre (mín. 3 letras)" oninput="validarNombre()">
+<p id="error" class="error hidden">Nombre inválido o repetido</p>
+<button id="btnInicio" class="primary" onclick="iniciarJugador()" disabled>▶ Comenzar reto</button>
+<button onclick="volverRanking()">⬅ Volver</button>
+</div>
+
+<div class="container hidden" id="game">
+<h2 id="jugador"></h2>
+<div class="progress" id="progreso"></div>
+<h3 id="pregunta"></h3>
+<div class="timer">⏱️ <span id="time">15</span></div>
+<div id="opciones" class="options"></div>
+<p id="estado"></p>
+<p><strong>✅ <span id="ok">0</span> | ❌ <span id="bad">0</span></strong></p>
+</div>
+
+<script>
+/* --- LÓGICA SIN CAMBIOS --- */
+const STORAGE_KEY='ranking_retos';
+const PASSWORD='1';
+const TOTAL_TIEMPO=15;
+const banco=[
+{q:'Capital de Canadá',o:['Toronto','Ottawa','Vancouver'],c:1},
+{q:'8 x 7',o:['54','56','64'],c:1},
+{q:'Órgano que más energía usa',o:['Cerebro','Pulmón','Hígado'],c:0},
+{q:'Cara en moneda (%)',o:['25','50','75'],c:1},
+{q:'IA significa',o:['Inteligencia Artificial','Interfaz Analítica','Ingeniería Avanzada'],c:0},
+{q:'Capital de Francia',o:['Roma','París','Madrid'],c:1},
+{q:'15 + 27',o:['40','42','44'],c:1},
+{q:'Serie 2,4,8,16',o:['18','24','32'],c:2},
+{q:'Especialidad del corazón',o:['Neurología','Cardiología','Neumología'],c:1},
+{q:'Planeta más grande',o:['Tierra','Marte','Júpiter'],c:2},
+{q:'√81',o:['7','8','9'],c:2},
+{q:'Idioma de Brasil',o:['Español','Portugués','Francés'],c:1},
+{q:'Número primo',o:['9','15','17'],c:2},
+{q:'Autor Don Quijote',o:['Cervantes','Borges','García Márquez'],c:0},
+{q:'100 / 4',o:['20','25','30'],c:1},
+{q:'Egipto está en',o:['Asia','África','Europa'],c:1},
+{q:'Agua a 0°C',o:['Líquido','Gas','Sólido'],c:2},
+{q:'Filtra la sangre',o:['Pulmón','Riñón','Hígado'],c:1},
+{q:'5³',o:['125','25','15'],c:0},
+{q:'Sistema sangre',o:['Respiratorio','Digestivo','Circulatorio'],c:2}
+];
+let jugadores=JSON.parse(localStorage.getItem(STORAGE_KEY))||[];
+let preguntas=[],indice=0,actual=null;
+let tiempo=TOTAL_TIEMPO, intervalo=null;
+function barajar(a){for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]]}return a}
+function prepararPregunta(p){const idx=[0,1,2];barajar(idx);return{q:p.q,o:idx.map(i=>p.o[i]),c:idx.indexOf(p.c)}}
+function guardar(){localStorage.setItem(STORAGE_KEY,JSON.stringify(jugadores))}
+function reiniciarConClave(){const c=prompt('Contraseña:');if(c===PASSWORD){localStorage.removeItem(STORAGE_KEY);jugadores=[];renderRanking();alert('Ranking reiniciado')}else alert('Contraseña incorrecta')}
+function mostrarRegistro(){ranking.classList.add('hidden');registro.classList.remove('hidden')}
+function volverRanking(){registro.classList.add('hidden');ranking.classList.remove('hidden');renderRanking()}
+function validarNombre(){const n=nombre.value.trim().toLowerCase();const rep=jugadores.some(j=>j.nombre.toLowerCase()===n);if(n.length>=3&&!rep){error.classList.add('hidden');btnInicio.disabled=false}else{error.classList.remove('hidden');btnInicio.disabled=true}}
+function iniciarJugador(){const n=nombre.value.trim();if(n.length<3)return;if(jugadores.some(j=>j.nombre.toLowerCase()===n.toLowerCase()))return;actual={nombre:n,ok:0,bad:0};preguntas=barajar([...banco]).map(p=>prepararPregunta(p));indice=0;nombre.value='';btnInicio.disabled=true;registro.classList.add('hidden');game.classList.remove('hidden');mostrarPregunta()}
+function iniciarContador(){clearInterval(intervalo);tiempo=TOTAL_TIEMPO;time.textContent=tiempo;intervalo=setInterval(()=>{tiempo--;time.textContent=tiempo;if(tiempo<=0){clearInterval(intervalo);actual.bad++;siguiente()}},1000)}
+function mostrarPregunta(){const p=preguntas[indice];jugador.textContent=actual.nombre;progreso.textContent=`Pregunta ${indice+1} de ${preguntas.length}`;pregunta.textContent=p.q;estado.textContent='';ok.textContent=actual.ok;bad.textContent=actual.bad;opciones.innerHTML='';p.o.forEach((txt,i)=>{const b=document.createElement('button');b.textContent=txt;b.onclick=()=>responder(i);opciones.appendChild(b)});iniciarContador()}
+function responder(i){clearInterval(intervalo);if(i===preguntas[indice].c){actual.ok++;estado.textContent='✅ Correcto'}else{actual.bad++;estado.textContent='❌ Incorrecto'}setTimeout(siguiente,400)}
+function siguiente(){indice++;if(indice<preguntas.length)mostrarPregunta();else finalizar()}
+function finalizar(){jugadores.push({...actual});guardar();actual=null;game.classList.add('hidden');ranking.classList.remove('hidden');renderRanking()}
+function renderRanking(){jugadores.sort((a,b)=>b.ok-a.ok||a.bad-b.bad);tabla.innerHTML='';jugadores.forEach((j,i)=>tabla.innerHTML+=`<tr><td>${i+1}</td><td>${j.nombre}</td><td>${j.ok}</td><td>${j.bad}</td></tr>`)}
+renderRanking();
+</script>
+</body>
+</html>
